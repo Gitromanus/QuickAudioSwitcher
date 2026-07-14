@@ -11,6 +11,11 @@
     <ApplicationIcon>QuickAudioSwitcher.ico</ApplicationIcon>
     <Version>1.1.0.0</Version>
     <FileVersion>1.1.0.0</FileVersion>
+    <Description>QuickAudioSwitcher — switch between audio output devices from the system tray</Description>
+    <Product>QuickAudioSwitcher</Product>
+    <Copyright>Copyright © 2025 Gitromanus. MIT License.</Copyright>
+    <Company>Gitromanus</Company>
+    <Authors>Gitromanus</Authors>
   </PropertyGroup>
 
   <ItemGroup>
