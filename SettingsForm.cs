@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Windows.Forms;
 
 namespace QuickAudioSwitcher;
@@ -27,7 +28,7 @@ internal class SettingsForm : Form
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new System.Drawing.Size(380, 320);
+        ClientSize = new System.Drawing.Size(420, 370);
 
         var settings = Settings.Instance;
 
@@ -36,7 +37,7 @@ internal class SettingsForm : Form
         {
             Text = lang.GetString("Modifiers"),
             Location = new System.Drawing.Point(12, 12),
-            Size = new System.Drawing.Size(350, 80)
+            Size = new System.Drawing.Size(390, 80)
         };
 
         _ctrlCheckBox = new CheckBox { Text = "Ctrl", Location = new System.Drawing.Point(15, 25), Size = new System.Drawing.Size(60, 24) };
@@ -109,7 +110,7 @@ internal class SettingsForm : Form
         _langComboBox = new ComboBox
         {
             Location = new System.Drawing.Point(75, 138),
-            Size = new System.Drawing.Size(150, 24),
+            Size = new System.Drawing.Size(200, 24),
             DropDownStyle = ComboBoxStyle.DropDownList
         };
 
@@ -134,15 +135,37 @@ internal class SettingsForm : Form
         {
             Text = lang.GetString("Preview") + ":",
             Location = new System.Drawing.Point(12, 175),
-            Size = new System.Drawing.Size(350, 24)
+            Size = new System.Drawing.Size(390, 24)
         };
         UpdatePreview();
+
+        // Windows Sound Settings button
+        var soundSettingsBtn = new Button
+        {
+            Text = "🔊 Windows Sound Settings",
+            Location = new System.Drawing.Point(12, 210),
+            Size = new System.Drawing.Size(390, 32),
+            FlatStyle = FlatStyle.Flat,
+        };
+        soundSettingsBtn.Click += (s, e) =>
+        {
+            try
+            {
+                Process.Start("ms-settings:sound");
+            }
+            catch
+            {
+                // Fallback
+                try { Process.Start("control", "mmsys.cpl"); }
+                catch { }
+            }
+        };
 
         // Buttons
         _saveButton = new Button
         {
             Text = lang.GetString("Save"),
-            Location = new System.Drawing.Point(190, 240),
+            Location = new System.Drawing.Point(230, 290),
             Size = new System.Drawing.Size(80, 28)
         };
         _saveButton.Click += (s, e) => SaveAndClose();
@@ -150,7 +173,7 @@ internal class SettingsForm : Form
         _cancelButton = new Button
         {
             Text = lang.GetString("Cancel"),
-            Location = new System.Drawing.Point(280, 240),
+            Location = new System.Drawing.Point(320, 290),
             Size = new System.Drawing.Size(80, 28)
         };
         _cancelButton.Click += (s, e) => DialogResult = DialogResult.Cancel;
@@ -167,8 +190,12 @@ internal class SettingsForm : Form
         {
             modGroup, keyLabel, _keyComboBox,
             langLabel, _langComboBox,
-            _previewLabel, _saveButton, _cancelButton
+            _previewLabel, soundSettingsBtn,
+            _saveButton, _cancelButton
         });
+
+        // Apply Windows 11 theme (dark/light + Mica)
+        Load += (s, e) => ThemeManager.ApplyTheme(this);
     }
 
     private void UpdatePreview()
