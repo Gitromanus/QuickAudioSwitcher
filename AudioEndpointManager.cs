@@ -1,50 +1,72 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 
 namespace QuickAudioSwitcher;
 
 /// <summary>
-/// Sets default audio endpoint using SoundVolumeView (NirSoft utility).
-/// SoundVolumeView.exe is embedded as a resource for single-file deployment.
+/// Sets default audio endpoint using NirCmd utility.
+/// NirCmd is a small (52 KB) freeware command-line utility from NirSoft.
+/// It is bundled with the application and extracted on first run.
 /// </summary>
 internal class AudioEndpointManager
 {
-    private readonly string _soundVolumeViewPath;
+    private readonly string _nircmdPath;
 
     public AudioEndpointManager()
     {
-        // Extract SoundVolumeView.exe from embedded resources to temp folder
-        string tempDir = Path.Combine(Path.GetTempPath(), "QuickAudioSwitcher");
-        Directory.CreateDirectory(tempDir);
-        _soundVolumeViewPath = Path.Combine(tempDir, "SoundVolumeView.exe");
-
-        if (!File.Exists(_soundVolumeViewPath))
+        // Look for nircmd.exe next to the application executable first,
+        // then in the nircmd subfolder, then extract from embedded resources
+        string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+        string[] searchPaths =
         {
-            var assembly = Assembly.GetExecutingAssembly();
-            string resourceName = "QuickAudioSwitcher.SoundVolumeView.SoundVolumeView.exe";
-            using var stream = assembly.GetManifestResourceStream(resourceName);
-            if (stream != null)
+            Path.Combine(baseDir, "nircmd.exe"),
+            Path.Combine(baseDir, "nircmd", "nircmd.exe"),
+        };
+
+        _nircmdPath = "";
+        foreach (var path in searchPaths)
+        {
+            if (File.Exists(path))
             {
-                using var fileStream = File.Create(_soundVolumeViewPath);
-                stream.CopyTo(fileStream);
+                _nircmdPath = path;
+                break;
             }
-            else
+        }
+
+        // If not found, extract from embedded resources
+        if (string.IsNullOrEmpty(_nircmdPath))
+        {
+            string tempDir = Path.Combine(Path.GetTempPath(), "QuickAudioSwitcher");
+            Directory.CreateDirectory(tempDir);
+            _nircmdPath = Path.Combine(tempDir, "nircmd.exe");
+
+            if (!File.Exists(_nircmdPath))
             {
-                // Fallback: look next to the executable
-                _soundVolumeViewPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SoundVolumeView.exe");
+                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+                string resourceName = "QuickAudioSwitcher.nircmd.nircmd.exe";
+                using var stream = assembly.GetManifestResourceStream(resourceName);
+                if (stream != null)
+                {
+                    using var fileStream = File.Create(_nircmdPath);
+                    stream.CopyTo(fileStream);
+                }
+                else
+                {
+                    throw new InvalidOperationException(
+                        "nircmd.exe not found. Please place nircmd.exe next to the application.");
+                }
             }
         }
     }
 
     /// <summary>
-    /// Gets the display name of a device as recognized by SoundVolumeView.
-    /// SoundVolumeView uses a shorter name than NAudio.
+    /// Gets the display name of a device as recognized by NirCmd.
+    /// NirCmd uses the short name (without the parenthesized part).
     /// </summary>
-    public string GetSoundVolumeViewName(string naudioName)
+    public static string GetNircmdName(string naudioName)
     {
-        // SoundVolumeView strips the part in parentheses
+        // NirCmd strips the part in parentheses
         // e.g., "Динамики (High Definition Audio Device)" -> "Динамики"
         // e.g., "PHILIPS FTV (NVIDIA High Definition Audio)" -> "PHILIPS FTV"
         int parenIndex = naudioName.IndexOf(" (");
@@ -57,30 +79,12 @@ internal class AudioEndpointManager
 
     public void SetDefaultEndpoint(string deviceId, string deviceName)
     {
-        // Get the short name for SoundVolumeView
-        string svvName = GetSoundVolumeViewName(deviceName);
+        string nircmdName = GetNircmdName(deviceName);
 
-        // Try SoundVolumeView
-        try
-        {
-            SetDefaultViaSoundVolumeView(svvName);
-            return;
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"SoundVolumeView failed: {ex.Message}");
-        }
-
-        throw new InvalidOperationException(
-            $"Could not set default audio endpoint to: {deviceName}");
-    }
-
-    private void SetDefaultViaSoundVolumeView(string deviceName)
-    {
         var psi = new ProcessStartInfo
         {
-            FileName = _soundVolumeViewPath,
-            Arguments = $"/SetDefault \"{deviceName}\" all",
+            FileName = _nircmdPath,
+            Arguments = $"setdefaultsounddevice \"{nircmdName}\"",
             UseShellExecute = false,
             CreateNoWindow = true,
             RedirectStandardOutput = true,
@@ -89,15 +93,15 @@ internal class AudioEndpointManager
 
         using var process = Process.Start(psi);
         if (process == null)
-            throw new InvalidOperationException("Failed to start SoundVolumeView");
+            throw new InvalidOperationException("Failed to start nircmd.exe");
 
-        process.WaitForExit(10000);
+        process.WaitForExit(5000);
 
         if (process.ExitCode != 0)
         {
             string error = process.StandardError.ReadToEnd();
             throw new InvalidOperationException(
-                $"SoundVolumeView error (exit={process.ExitCode}): {error}");
+                $"nircmd error (exit={process.ExitCode}): {error}");
         }
     }
 }

@@ -74,7 +74,10 @@ public class TrayApplicationContext : ApplicationContext
             UpdateTrayIcon(nextDevice);
             UpdateTrayText();
         }
-        catch (Exception ex) { _trayIcon.Text = $"{LanguageManager.Instance.GetString("SwitchError")}: {ex.Message}"; }
+        catch
+        {
+            SetTrayError(LanguageManager.Instance.GetString("SwitchError"));
+        }
     }
 
     private void RefreshDevices()
@@ -181,6 +184,7 @@ public class TrayApplicationContext : ApplicationContext
 
         _menu?.Dispose();
         _menu = new ContextMenuStrip();
+        ApplyMenuTheme(_menu);
 
         var h = _menu.Items.Add(lang.GetString("Devices")); h.Enabled = false;
         _menu.Items.Add(new ToolStripSeparator());
@@ -200,25 +204,13 @@ public class TrayApplicationContext : ApplicationContext
             item.Click += (s, e) =>
             {
                 try { _endpointManager.SetDefaultEndpoint(did, dnm); UpdateTrayIcon(device); UpdateTrayText(); }
-                catch (Exception ex) { _trayIcon.Text = $"{lang.GetString("SwitchError")}: {ex.Message}"; }
+                catch { SetTrayError(lang.GetString("SwitchError")); }
             };
         }
 
         _menu.Items.Add(new ToolStripSeparator());
         var si = _menu.Items.Add(lang.GetString("Settings"));
         si.Click += (s, e) => ShowSettings();
-        _menu.Items.Add(new ToolStripSeparator());
-
-        // Auto-start toggle
-        bool autoStart = IsAutoStartEnabled();
-        var asi = _menu.Items.Add(autoStart ? lang.GetString("AutoStart") : lang.GetString("AutoStartOff"));
-        asi.Click += (s, e) =>
-        {
-            bool newState = !IsAutoStartEnabled();
-            SetAutoStart(newState);
-            RebuildMenu(); // refresh checkmark
-        };
-
         _menu.Items.Add(new ToolStripSeparator());
         var ei = _menu.Items.Add(lang.GetString("Exit"));
         ei.Click += (s, e) =>
@@ -230,7 +222,7 @@ public class TrayApplicationContext : ApplicationContext
         };
     }
 
-    private static bool IsAutoStartEnabled()
+    internal static bool IsAutoStartEnabled()
     {
         using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
             @"Software\Microsoft\Windows\CurrentVersion\Run", false);
@@ -239,7 +231,7 @@ public class TrayApplicationContext : ApplicationContext
         return val != null;
     }
 
-    private static void SetAutoStart(bool enable)
+    internal static void SetAutoStart(bool enable)
     {
         using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
             @"Software\Microsoft\Windows\CurrentVersion\Run", true);
@@ -261,5 +253,68 @@ public class TrayApplicationContext : ApplicationContext
         using var dialog = new SettingsForm();
         if (dialog.ShowDialog() == DialogResult.OK)
             _hotkeyManager.Register(Settings.Instance.HotkeyModifiers, Settings.Instance.HotkeyKey);
+    }
+
+    /// <summary>
+    /// Sets tray text safely — NotifyIcon.Text has a 128 character limit.
+    /// </summary>
+    private void SetTrayError(string message)
+    {
+        try
+        {
+            if (message.Length > 120)
+                message = message[..117] + "...";
+            _trayIcon.Text = message;
+        }
+        catch
+        {
+            // Ignore — better to have no error than crash
+        }
+    }
+
+    /// <summary>
+    /// Applies dark/light theme to the context menu strip based on Windows theme.
+    /// </summary>
+    private static void ApplyMenuTheme(ContextMenuStrip menu)
+    {
+        bool isDark = ThemeManager.IsWindowsDarkMode();
+        if (isDark)
+        {
+            menu.BackColor = System.Drawing.Color.FromArgb(45, 45, 45);
+            menu.ForeColor = System.Drawing.Color.FromArgb(241, 241, 241);
+            menu.Renderer = new DarkMenuRenderer();
+        }
+        else
+        {
+            menu.BackColor = System.Drawing.SystemColors.Control;
+            menu.ForeColor = System.Drawing.SystemColors.ControlText;
+            menu.Renderer = new ToolStripProfessionalRenderer();
+        }
+    }
+
+    /// <summary>
+    /// Custom renderer for dark context menu.
+    /// </summary>
+    private class DarkMenuRenderer : ToolStripProfessionalRenderer
+    {
+        public DarkMenuRenderer() : base(new DarkMenuColors()) { }
+    }
+
+    /// <summary>
+    /// Dark color table for context menu.
+    /// </summary>
+    private class DarkMenuColors : ProfessionalColorTable
+    {
+        public override System.Drawing.Color MenuItemSelected => System.Drawing.Color.FromArgb(70, 70, 70);
+        public override System.Drawing.Color MenuItemSelectedGradientBegin => System.Drawing.Color.FromArgb(70, 70, 70);
+        public override System.Drawing.Color MenuItemSelectedGradientEnd => System.Drawing.Color.FromArgb(70, 70, 70);
+        public override System.Drawing.Color MenuBorder => System.Drawing.Color.FromArgb(100, 100, 100);
+        public override System.Drawing.Color MenuItemBorder => System.Drawing.Color.FromArgb(100, 100, 100);
+        public override System.Drawing.Color ToolStripDropDownBackground => System.Drawing.Color.FromArgb(45, 45, 45);
+        public override System.Drawing.Color ImageMarginGradientBegin => System.Drawing.Color.FromArgb(45, 45, 45);
+        public override System.Drawing.Color ImageMarginGradientMiddle => System.Drawing.Color.FromArgb(45, 45, 45);
+        public override System.Drawing.Color ImageMarginGradientEnd => System.Drawing.Color.FromArgb(45, 45, 45);
+        public override System.Drawing.Color SeparatorDark => System.Drawing.Color.FromArgb(80, 80, 80);
+        public override System.Drawing.Color SeparatorLight => System.Drawing.Color.FromArgb(80, 80, 80);
     }
 }

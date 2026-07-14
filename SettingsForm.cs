@@ -1,11 +1,12 @@
 using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.Windows.Forms;
 
 namespace QuickAudioSwitcher;
 
 /// <summary>
-/// Settings dialog for configuring hotkey and language.
+/// Settings dialog for configuring hotkey, language and auto-start.
 /// </summary>
 internal class SettingsForm : Form
 {
@@ -17,7 +18,11 @@ internal class SettingsForm : Form
     private readonly ComboBox _langComboBox;
     private readonly Button _saveButton;
     private readonly Button _cancelButton;
-    private readonly Label _previewLabel;
+    private readonly Label _quickSwitchLabel;
+    private readonly GroupBox _hotkeyGroup;
+    private readonly Label _langLabel;
+    private readonly Button _soundSettingsBtn;
+    private readonly CheckBox _autoStartCheckBox;
 
     public SettingsForm()
     {
@@ -28,46 +33,51 @@ internal class SettingsForm : Form
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new System.Drawing.Size(420, 370);
+        ClientSize = new Size(480, 370);
 
         var settings = Settings.Instance;
+        int leftCol = 12;
+        int labelW = 100;
+        int rightCol = leftCol + labelW + 6; // 118
+        int fieldW = 140;
+        int formW = 450;
+        int rowH = 28;
+        int y = 12;
 
-        // Modifiers group
-        var modGroup = new GroupBox
+        // ── Hotkey group (modifiers + key + quick switch) ──
+        _hotkeyGroup = new GroupBox
         {
-            Text = lang.GetString("Modifiers"),
-            Location = new System.Drawing.Point(12, 12),
-            Size = new System.Drawing.Size(390, 80)
+            Text = lang.GetString("Hotkey"),
+            Location = new Point(leftCol, y),
+            Size = new Size(formW, 150)
         };
 
-        _ctrlCheckBox = new CheckBox { Text = "Ctrl", Location = new System.Drawing.Point(15, 25), Size = new System.Drawing.Size(60, 24) };
-        _altCheckBox = new CheckBox { Text = "Alt", Location = new System.Drawing.Point(85, 25), Size = new System.Drawing.Size(60, 24) };
-        _shiftCheckBox = new CheckBox { Text = "Shift", Location = new System.Drawing.Point(155, 25), Size = new System.Drawing.Size(60, 24) };
-        _winCheckBox = new CheckBox { Text = "Win", Location = new System.Drawing.Point(225, 25), Size = new System.Drawing.Size(60, 24) };
+        _ctrlCheckBox = new CheckBox { Text = "Ctrl", Location = new Point(15, 25), Size = new Size(60, 24) };
+        _altCheckBox = new CheckBox { Text = "Alt", Location = new Point(85, 25), Size = new Size(60, 24) };
+        _shiftCheckBox = new CheckBox { Text = "Shift", Location = new Point(155, 25), Size = new Size(60, 24) };
+        _winCheckBox = new CheckBox { Text = "Win", Location = new Point(225, 25), Size = new Size(60, 24) };
 
         _ctrlCheckBox.Checked = settings.HotkeyModifiers.HasFlag(HotkeyManager.Modifiers.Control);
         _altCheckBox.Checked = settings.HotkeyModifiers.HasFlag(HotkeyManager.Modifiers.Alt);
         _shiftCheckBox.Checked = settings.HotkeyModifiers.HasFlag(HotkeyManager.Modifiers.Shift);
         _winCheckBox.Checked = settings.HotkeyModifiers.HasFlag(HotkeyManager.Modifiers.Win);
 
-        modGroup.Controls.AddRange(new Control[] { _ctrlCheckBox, _altCheckBox, _shiftCheckBox, _winCheckBox });
-
-        // Key combo
         var keyLabel = new Label
         {
             Text = lang.GetString("Key"),
-            Location = new System.Drawing.Point(12, 105),
-            Size = new System.Drawing.Size(60, 24)
+            Location = new Point(15, 55),
+            Size = new Size(labelW, 24)
         };
 
         _keyComboBox = new ComboBox
         {
-            Location = new System.Drawing.Point(75, 103),
-            Size = new System.Drawing.Size(120, 24),
-            DropDownStyle = ComboBoxStyle.DropDownList
+            Location = new Point(rightCol - leftCol + 15, 55),
+            Size = new Size(fieldW, 24),
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            DrawMode = DrawMode.OwnerDrawFixed,
         };
+        _keyComboBox.DrawItem += ComboBox_DrawItem;
 
-        // Add common keys
         _keyComboBox.Items.AddRange(new object[]
         {
             Keys.F1, Keys.F2, Keys.F3, Keys.F4, Keys.F5, Keys.F6,
@@ -99,25 +109,42 @@ internal class SettingsForm : Form
         if (_keyComboBox.SelectedItem == null)
             _keyComboBox.SelectedIndex = 0;
 
-        // Language
-        var langLabel = new Label
+        // Quick switch preview inside the group box
+        _quickSwitchLabel = new Label
+        {
+            Location = new Point(15, 90),
+            Size = new Size(formW - 30, 24)
+        };
+        UpdateQuickSwitch();
+
+        _hotkeyGroup.Controls.AddRange(new Control[]
+        {
+            _ctrlCheckBox, _altCheckBox, _shiftCheckBox, _winCheckBox,
+            keyLabel, _keyComboBox, _quickSwitchLabel
+        });
+
+        y += 160;
+
+        // ── Language ──
+        _langLabel = new Label
         {
             Text = lang.GetString("Language"),
-            Location = new System.Drawing.Point(12, 140),
-            Size = new System.Drawing.Size(60, 24)
+            Location = new Point(leftCol, y + 2),
+            Size = new Size(labelW, 24)
         };
 
         _langComboBox = new ComboBox
         {
-            Location = new System.Drawing.Point(75, 138),
-            Size = new System.Drawing.Size(200, 24),
-            DropDownStyle = ComboBoxStyle.DropDownList
+            Location = new Point(rightCol, y),
+            Size = new Size(fieldW, 24),
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            DrawMode = DrawMode.OwnerDrawFixed,
         };
+        _langComboBox.DrawItem += ComboBox_DrawItem;
 
         foreach (var code in LanguageManager.GetAvailableLanguages())
             _langComboBox.Items.Add(LanguageManager.GetLanguageDisplayName(code));
 
-        // Find index of current language
         int langIndex = 0;
         var codes = LanguageManager.GetAvailableLanguages();
         for (int i = 0; i < codes.Length; i++)
@@ -130,24 +157,31 @@ internal class SettingsForm : Form
         }
         _langComboBox.SelectedIndex = langIndex;
 
-        // Preview
-        _previewLabel = new Label
-        {
-            Text = lang.GetString("Preview") + ":",
-            Location = new System.Drawing.Point(12, 175),
-            Size = new System.Drawing.Size(390, 24)
-        };
-        UpdatePreview();
+        // Apply language on-the-fly when selection changes
+        _langComboBox.SelectedIndexChanged += (s, e) => ApplyLanguage();
 
-        // Windows Sound Settings button
-        var soundSettingsBtn = new Button
+        y += rowH + 8;
+
+        // ── Auto-start ──
+        _autoStartCheckBox = new CheckBox
+        {
+            Text = lang.GetString("AutoStartCheckBox"),
+            Location = new Point(leftCol, y),
+            Size = new Size(200, 24),
+            Checked = TrayApplicationContext.IsAutoStartEnabled(),
+        };
+
+        y += rowH + 8;
+
+        // ── Windows Sound Settings button ──
+        _soundSettingsBtn = new Button
         {
             Text = "🔊 Windows Sound Settings",
-            Location = new System.Drawing.Point(12, 210),
-            Size = new System.Drawing.Size(390, 32),
+            Location = new Point(leftCol, y),
+            Size = new Size(formW, 34),
             FlatStyle = FlatStyle.Flat,
         };
-        soundSettingsBtn.Click += (s, e) =>
+        _soundSettingsBtn.Click += (s, e) =>
         {
             try
             {
@@ -155,42 +189,44 @@ internal class SettingsForm : Form
             }
             catch
             {
-                // Fallback
                 try { Process.Start("control", "mmsys.cpl"); }
                 catch { }
             }
         };
 
-        // Buttons
+        y += 44;
+
+        // ── Buttons ──
         _saveButton = new Button
         {
             Text = lang.GetString("Save"),
-            Location = new System.Drawing.Point(230, 290),
-            Size = new System.Drawing.Size(80, 28)
+            Location = new Point(formW - 210, y),
+            Size = new Size(100, 28)
         };
         _saveButton.Click += (s, e) => SaveAndClose();
 
         _cancelButton = new Button
         {
             Text = lang.GetString("Cancel"),
-            Location = new System.Drawing.Point(320, 290),
-            Size = new System.Drawing.Size(80, 28)
+            Location = new Point(formW - 100, y),
+            Size = new Size(100, 28)
         };
         _cancelButton.Click += (s, e) => DialogResult = DialogResult.Cancel;
 
-        // Update preview on any change
-        EventHandler updatePreview = (s, e) => UpdatePreview();
-        _ctrlCheckBox.CheckedChanged += updatePreview;
-        _altCheckBox.CheckedChanged += updatePreview;
-        _shiftCheckBox.CheckedChanged += updatePreview;
-        _winCheckBox.CheckedChanged += updatePreview;
-        _keyComboBox.SelectedIndexChanged += updatePreview;
+        // Update quick switch preview on any change
+        EventHandler updateQuickSwitch = (s, e) => UpdateQuickSwitch();
+        _ctrlCheckBox.CheckedChanged += updateQuickSwitch;
+        _altCheckBox.CheckedChanged += updateQuickSwitch;
+        _shiftCheckBox.CheckedChanged += updateQuickSwitch;
+        _winCheckBox.CheckedChanged += updateQuickSwitch;
+        _keyComboBox.SelectedIndexChanged += updateQuickSwitch;
 
         Controls.AddRange(new Control[]
         {
-            modGroup, keyLabel, _keyComboBox,
-            langLabel, _langComboBox,
-            _previewLabel, soundSettingsBtn,
+            _hotkeyGroup,
+            _langLabel, _langComboBox,
+            _autoStartCheckBox,
+            _soundSettingsBtn,
             _saveButton, _cancelButton
         });
 
@@ -198,7 +234,60 @@ internal class SettingsForm : Form
         Load += (s, e) => ThemeManager.ApplyTheme(this);
     }
 
-    private void UpdatePreview()
+    /// <summary>
+    /// Applies the selected language to all UI elements in real-time.
+    /// </summary>
+    private void ApplyLanguage()
+    {
+        var codes = LanguageManager.GetAvailableLanguages();
+        int idx = _langComboBox.SelectedIndex;
+        if (idx < 0 || idx >= codes.Length) return;
+
+        string newLang = codes[idx];
+        LanguageManager.Instance.SetLanguage(newLang);
+        var lang = LanguageManager.Instance;
+
+        Text = lang.GetString("SettingsTitle");
+        _hotkeyGroup.Text = lang.GetString("Hotkey");
+        _langLabel.Text = lang.GetString("Language");
+        _autoStartCheckBox.Text = lang.GetString("AutoStartCheckBox");
+        _saveButton.Text = lang.GetString("Save");
+        _cancelButton.Text = lang.GetString("Cancel");
+        UpdateQuickSwitch();
+    }
+
+    /// <summary>
+    /// Custom draw for ComboBox items — respects dark/light theme.
+    /// </summary>
+    private void ComboBox_DrawItem(object? sender, DrawItemEventArgs e)
+    {
+        if (e.Index < 0) return;
+
+        var cb = (ComboBox)sender!;
+        bool isDark = ThemeManager.IsWindowsDarkMode();
+
+        Color bg, fg;
+        if ((e.State & DrawItemState.Selected) == DrawItemState.Selected)
+        {
+            bg = isDark ? Color.FromArgb(70, 70, 70) : SystemColors.Highlight;
+            fg = isDark ? Color.FromArgb(241, 241, 241) : SystemColors.HighlightText;
+        }
+        else
+        {
+            bg = isDark ? Color.FromArgb(45, 45, 45) : SystemColors.Window;
+            fg = isDark ? Color.FromArgb(241, 241, 241) : SystemColors.WindowText;
+        }
+
+        e.Graphics.FillRectangle(new SolidBrush(bg), e.Bounds);
+        var text = cb.Items[e.Index]?.ToString() ?? "";
+        TextRenderer.DrawText(e.Graphics, text,
+            e.Font, e.Bounds, fg,
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+
+        e.DrawFocusRectangle();
+    }
+
+    private void UpdateQuickSwitch()
     {
         var lang = LanguageManager.Instance;
         var parts = new System.Collections.Generic.List<string>();
@@ -208,7 +297,7 @@ internal class SettingsForm : Form
         if (_winCheckBox.Checked) parts.Add("Win");
 
         var key = _keyComboBox.SelectedItem?.ToString() ?? "?";
-        _previewLabel.Text = $"{lang.GetString("Preview")}: {string.Join(" + ", parts)} + {key}";
+        _quickSwitchLabel.Text = $"{lang.GetString("QuickSwitch")} {string.Join(" + ", parts)} + {key}";
     }
 
     private void SaveAndClose()
@@ -222,13 +311,15 @@ internal class SettingsForm : Form
 
         var key = (Keys)(_keyComboBox.SelectedItem ?? Keys.F12);
 
-        // Validate
         if (modifiers == HotkeyManager.Modifiers.None)
         {
             MessageBox.Show(lang.GetString("SelectModifier"),
                 lang.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
+
+        // Save auto-start
+        TrayApplicationContext.SetAutoStart(_autoStartCheckBox.Checked);
 
         // Save language
         var codes = LanguageManager.GetAvailableLanguages();
