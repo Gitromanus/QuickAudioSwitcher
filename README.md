@@ -18,8 +18,8 @@ Quickly switch between audio output devices from the system tray.
 
 ## Installation
 
-1. Download the latest release: [Releases](https://github.com/Gitromanus/QuickAudioSwitcher/releases)
-2. Run `QuickAudioSwitcher.exe` — the app appears in the system tray
+1. [**Download QuickAudioSwitcher.exe**](https://github.com/Gitromanus/QuickAudioSwitcher/releases/latest/download/QuickAudioSwitcher.exe) (latest release)
+2. Run it — the app appears in the system tray
 
 > **Note:** SmartScreen may show a warning on first launch. Click "More info" → "Run anyway".
 
