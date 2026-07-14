@@ -23,7 +23,7 @@ internal class AudioEndpointManager
         if (!File.Exists(_soundVolumeViewPath))
         {
             var assembly = Assembly.GetExecutingAssembly();
-            string resourceName = "QuickAudioSwitcher.SoundVolumeView.exe";
+            string resourceName = "QuickAudioSwitcher.SoundVolumeView.SoundVolumeView.exe";
             using var stream = assembly.GetManifestResourceStream(resourceName);
             if (stream != null)
             {
