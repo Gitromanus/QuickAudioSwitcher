@@ -1,0 +1,20 @@
+# .NET
+bin/
+obj/
+publish/
+*.user
+*.suo
+*.cache
+*.log
+*.vs/
+
+# IDE
+.idea/
+.vscode/
+
+# Temp files
+mmres_icons/
+props_output.txt
+
+# Generated
+QuickAudioSwitcher.ico

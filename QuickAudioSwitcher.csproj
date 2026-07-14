@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>QuickAudioSwitcher</AssemblyName>
+    <RootNamespace>QuickAudioSwitcher</RootNamespace>
+    <ApplicationIcon>QuickAudioSwitcher.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="2.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="**/*" />
+    <Compile Include="Program.cs" />
+    <Compile Include="TrayApplicationContext.cs" />
+    <Compile Include="AudioEndpointManager.cs" />
+    <Compile Include="HotkeyManager.cs" />
+    <Compile Include="Settings.cs" />
+    <Compile Include="SettingsForm.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="SoundVolumeView\SoundVolumeView.exe" />
+    <Content Include="QuickAudioSwitcher.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>
