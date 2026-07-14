@@ -12,9 +12,10 @@ Quickly switch between audio output devices from the system tray.
 - 📋 **Right-click** — menu with all devices for quick selection
 - 🎯 **System icons** — each device shows its native Windows icon
 - ⌨️ **Hotkey** — `Ctrl+F12` (configurable in Settings)
-- 🌍 **Multi-language** — English, Русский, Deutsch, Français, Español, Português, Italiano, 中文, 日本語, 한국어
-- ⚙️ **Settings** — configure hotkey and language via the tray menu
-- 🚀 **Auto-start** — toggle on/off from the tray menu
+- 🌍 **Multi-language** — 10 languages with country flags: 🇬🇧 English, 🇷🇺 Русский, 🇩🇪 Deutsch, 🇫🇷 Français, 🇪🇸 Español, 🇵🇹 Português, 🇮🇹 Italiano, 🇨🇳 中文, 🇯🇵 日本語, 🇰🇷 한국어
+- ⚙️ **Settings** — configure hotkey, language, and auto-start
+- 🚀 **Auto-start** — toggle in Settings
+- 🌙 **Dark theme** — automatically follows Windows 11 dark/light mode (Mica effect)
 
 ## Installation
 
@@ -30,13 +31,12 @@ Quickly switch between audio output devices from the system tray.
 | Left-click | Switch to next device |
 | Right-click | Open device menu |
 | `Ctrl+F12` | Switch to next device |
-| Menu → Settings | Change hotkey or language |
-| Menu → Auto-start | Toggle auto-start with Windows |
+| Menu → Settings | Change hotkey, language, or auto-start |
 | Menu → Exit | Close the app |
 
 ## How It Works
 
-The app uses [SoundVolumeView](https://www.nirsoft.net/utils/sound_volume_view.html) by NirSoft to switch the default audio device. Device icons are extracted from the Windows registry (`mmres.dll`).
+The app uses [NirCmd](https://www.nirsoft.net/utils/nircmd.html) by NirSoft to switch the default audio device. NirCmd is embedded in the executable and extracted on first run. Device icons are extracted from the Windows registry (`mmres.dll`).
 
 ## Build from Source
 
