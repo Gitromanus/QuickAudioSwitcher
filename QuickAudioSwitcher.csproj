@@ -21,6 +21,7 @@
     <Compile Include="TrayApplicationContext.cs" />
     <Compile Include="AudioEndpointManager.cs" />
     <Compile Include="HotkeyManager.cs" />
+    <Compile Include="LanguageManager.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="SettingsForm.cs" />
   </ItemGroup>

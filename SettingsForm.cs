@@ -4,7 +4,7 @@ using System.Windows.Forms;
 namespace QuickAudioSwitcher;
 
 /// <summary>
-/// Settings dialog for configuring hotkey.
+/// Settings dialog for configuring hotkey and language.
 /// </summary>
 internal class SettingsForm : Form
 {
@@ -13,27 +13,30 @@ internal class SettingsForm : Form
     private readonly CheckBox _shiftCheckBox;
     private readonly CheckBox _winCheckBox;
     private readonly ComboBox _keyComboBox;
+    private readonly ComboBox _langComboBox;
     private readonly Button _saveButton;
     private readonly Button _cancelButton;
     private readonly Label _previewLabel;
 
     public SettingsForm()
     {
-        Text = "⚙ Настройки Audio Switcher";
+        var lang = LanguageManager.Instance;
+
+        Text = lang.GetString("SettingsTitle");
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new System.Drawing.Size(350, 250);
+        ClientSize = new System.Drawing.Size(380, 320);
 
         var settings = Settings.Instance;
 
         // Modifiers group
         var modGroup = new GroupBox
         {
-            Text = "Модификаторы",
+            Text = lang.GetString("Modifiers"),
             Location = new System.Drawing.Point(12, 12),
-            Size = new System.Drawing.Size(320, 80)
+            Size = new System.Drawing.Size(350, 80)
         };
 
         _ctrlCheckBox = new CheckBox { Text = "Ctrl", Location = new System.Drawing.Point(15, 25), Size = new System.Drawing.Size(60, 24) };
@@ -51,7 +54,7 @@ internal class SettingsForm : Form
         // Key combo
         var keyLabel = new Label
         {
-            Text = "Клавиша:",
+            Text = lang.GetString("Key"),
             Location = new System.Drawing.Point(12, 105),
             Size = new System.Drawing.Size(60, 24)
         };
@@ -95,28 +98,59 @@ internal class SettingsForm : Form
         if (_keyComboBox.SelectedItem == null)
             _keyComboBox.SelectedIndex = 0;
 
+        // Language
+        var langLabel = new Label
+        {
+            Text = lang.GetString("Language"),
+            Location = new System.Drawing.Point(12, 140),
+            Size = new System.Drawing.Size(60, 24)
+        };
+
+        _langComboBox = new ComboBox
+        {
+            Location = new System.Drawing.Point(75, 138),
+            Size = new System.Drawing.Size(150, 24),
+            DropDownStyle = ComboBoxStyle.DropDownList
+        };
+
+        foreach (var code in LanguageManager.GetAvailableLanguages())
+            _langComboBox.Items.Add(LanguageManager.GetLanguageDisplayName(code));
+
+        // Find index of current language
+        int langIndex = 0;
+        var codes = LanguageManager.GetAvailableLanguages();
+        for (int i = 0; i < codes.Length; i++)
+        {
+            if (codes[i] == settings.Language)
+            {
+                langIndex = i;
+                break;
+            }
+        }
+        _langComboBox.SelectedIndex = langIndex;
+
         // Preview
         _previewLabel = new Label
         {
-            Text = "Предпросмотр:",
-            Location = new System.Drawing.Point(12, 140),
-            Size = new System.Drawing.Size(320, 24)
+            Text = lang.GetString("Preview") + ":",
+            Location = new System.Drawing.Point(12, 175),
+            Size = new System.Drawing.Size(350, 24)
         };
         UpdatePreview();
 
         // Buttons
         _saveButton = new Button
         {
-            Text = "Сохранить",
-            Location = new System.Drawing.Point(160, 180),
+            Text = lang.GetString("Save"),
+            Location = new System.Drawing.Point(190, 240),
             Size = new System.Drawing.Size(80, 28)
         };
         _saveButton.Click += (s, e) => SaveAndClose();
 
         _cancelButton = new Button
         {
-            Text = "Отмена",
-            Location = new System.Drawing.Point(250, 180),
+            Text = lang.GetString("Cancel"),
+            Location = new System.Drawing.Point(280, 240),
             Size = new System.Drawing.Size(80, 28)
         };
         _cancelButton.Click += (s, e) => DialogResult = DialogResult.Cancel;
@@ -132,12 +166,14 @@ internal class SettingsForm : Form
         Controls.AddRange(new Control[]
         {
             modGroup, keyLabel, _keyComboBox,
+            langLabel, _langComboBox,
             _previewLabel, _saveButton, _cancelButton
         });
     }
 
     private void UpdatePreview()
     {
+        var lang = LanguageManager.Instance;
         var parts = new System.Collections.Generic.List<string>();
         if (_ctrlCheckBox.Checked) parts.Add("Ctrl");
         if (_altCheckBox.Checked) parts.Add("Alt");
@@ -145,11 +181,12 @@ internal class SettingsForm : Form
         if (_winCheckBox.Checked) parts.Add("Win");
 
         var key = _keyComboBox.SelectedItem?.ToString() ?? "?";
-        _previewLabel.Text = $"Предпросмотр: {string.Join(" + ", parts)} + {key}";
+        _previewLabel.Text = $"{lang.GetString("Preview")}: {string.Join(" + ", parts)} + {key}";
     }
 
     private void SaveAndClose()
     {
+        var lang = LanguageManager.Instance;
         var modifiers = HotkeyManager.Modifiers.None;
         if (_ctrlCheckBox.Checked) modifiers |= HotkeyManager.Modifiers.Control;
         if (_altCheckBox.Checked) modifiers |= HotkeyManager.Modifiers.Alt;
@@ -161,9 +198,22 @@ internal class SettingsForm : Form
         // Validate
         if (modifiers == HotkeyManager.Modifiers.None)
         {
-            MessageBox.Show("Выберите хотя бы один модификатор (Ctrl, Alt, Shift или Win).",
-                "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(lang.GetString("SelectModifier"),
+                lang.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
+        }
+
+        // Save language
+        var codes = LanguageManager.GetAvailableLanguages();
+        int langIndex = _langComboBox.SelectedIndex;
+        if (langIndex >= 0 && langIndex < codes.Length)
+        {
+            string newLang = codes[langIndex];
+            if (newLang != Settings.Instance.Language)
+            {
+                Settings.Instance.Language = newLang;
+                LanguageManager.Instance.SetLanguage(newLang);
+            }
         }
 
         Settings.Instance.HotkeyModifiers = modifiers;

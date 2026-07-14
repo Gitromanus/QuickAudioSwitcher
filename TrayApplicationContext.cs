@@ -74,7 +74,7 @@ public class TrayApplicationContext : ApplicationContext
             UpdateTrayIcon(nextDevice);
             UpdateTrayText();
         }
-        catch (Exception ex) { _trayIcon.Text = $"❌ {ex.Message}"; }
+        catch (Exception ex) { _trayIcon.Text = $"{LanguageManager.Instance.GetString("SwitchError")}: {ex.Message}"; }
     }
 
     private void RefreshDevices()
@@ -87,8 +87,9 @@ public class TrayApplicationContext : ApplicationContext
 
     private void UpdateTrayText()
     {
+        var lang = LanguageManager.Instance;
         var d = _deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
-        _trayIcon.Text = d != null ? $"🔊 {d.FriendlyName}" : "🔊 Нет активных устройств";
+        _trayIcon.Text = d != null ? $"🔊 {d.FriendlyName}" : lang.GetString("NoDevices");
     }
 
     private void UpdateTrayIcon(MMDevice? currentDevice)
@@ -174,13 +175,14 @@ public class TrayApplicationContext : ApplicationContext
 
     private void RebuildMenu()
     {
+        var lang = LanguageManager.Instance;
         RefreshDevices();
         var defaultDevice = _deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
 
         _menu?.Dispose();
         _menu = new ContextMenuStrip();
 
-        var h = _menu.Items.Add("🔊 Устройства вывода"); h.Enabled = false;
+        var h = _menu.Items.Add(lang.GetString("Devices")); h.Enabled = false;
         _menu.Items.Add(new ToolStripSeparator());
 
         foreach (var device in _activeDevices)
@@ -198,15 +200,27 @@ public class TrayApplicationContext : ApplicationContext
             item.Click += (s, e) =>
             {
                 try { _endpointManager.SetDefaultEndpoint(did, dnm); UpdateTrayIcon(device); UpdateTrayText(); }
-                catch (Exception ex) { _trayIcon.Text = $"❌ {ex.Message}"; }
+                catch (Exception ex) { _trayIcon.Text = $"{lang.GetString("SwitchError")}: {ex.Message}"; }
             };
         }
 
         _menu.Items.Add(new ToolStripSeparator());
-        var si = _menu.Items.Add("⚙ Настройки...");
+        var si = _menu.Items.Add(lang.GetString("Settings"));
         si.Click += (s, e) => ShowSettings();
         _menu.Items.Add(new ToolStripSeparator());
-        var ei = _menu.Items.Add("✕ Выход");
+
+        // Auto-start toggle
+        bool autoStart = IsAutoStartEnabled();
+        var asi = _menu.Items.Add(autoStart ? lang.GetString("AutoStart") : lang.GetString("AutoStartOff"));
+        asi.Click += (s, e) =>
+        {
+            bool newState = !IsAutoStartEnabled();
+            SetAutoStart(newState);
+            RebuildMenu(); // refresh checkmark
+        };
+
+        _menu.Items.Add(new ToolStripSeparator());
+        var ei = _menu.Items.Add(lang.GetString("Exit"));
         ei.Click += (s, e) =>
         {
             _hotkeyManager.Dispose(); _trayIcon.Visible = false;
@@ -214,6 +228,32 @@ public class TrayApplicationContext : ApplicationContext
             foreach (var icon in _deviceIcons.Values) icon.Dispose();
             Application.Exit();
         };
+    }
+
+    private static bool IsAutoStartEnabled()
+    {
+        using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+            @"Software\Microsoft\Windows\CurrentVersion\Run", false);
+        if (key == null) return false;
+        var val = key.GetValue("QuickAudioSwitcher");
+        return val != null;
+    }
+
+    private static void SetAutoStart(bool enable)
+    {
+        using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+            @"Software\Microsoft\Windows\CurrentVersion\Run", true);
+        if (key == null) return;
+        if (enable)
+        {
+            string exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? "";
+            if (!string.IsNullOrEmpty(exePath))
+                key.SetValue("QuickAudioSwitcher", $"\"{exePath}\"");
+        }
+        else
+        {
+            key.DeleteValue("QuickAudioSwitcher", false);
+        }
     }
 
     private void ShowSettings()

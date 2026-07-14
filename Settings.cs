@@ -30,9 +30,11 @@ internal class Settings
     }
 
     public HotkeyManager.Modifiers HotkeyModifiers { get; set; } =
-        HotkeyManager.Modifiers.Control | HotkeyManager.Modifiers.Alt;
+        HotkeyManager.Modifiers.Control;
 
     public Keys HotkeyKey { get; set; } = Keys.F12;
+
+    public string Language { get; set; } = "en";
 
     public void Save()
     {
