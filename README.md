@@ -21,7 +21,7 @@ Quickly switch between audio output devices from the system tray.
 
 | Tray Menu | Settings |
 |-----------|----------|
-| ![Tray Menu](screenshots/tray.png) | ![Settings](screenshots/settings.png) |
+| ![Tray Menu](screenshots/settings.png) | ![Settings](screenshots/tray.png) |
 
 ## Installation
 
