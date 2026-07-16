@@ -17,6 +17,12 @@ Quickly switch between audio output devices from the system tray.
 - 🚀 **Auto-start** — toggle in Settings
 - 🌙 **Dark theme** — automatically follows Windows 11 dark/light mode (Mica effect)
 
+## Screenshots
+
+| Tray Menu | Settings |
+|-----------|----------|
+| ![Tray Menu](screenshots/tray.png) | ![Settings](screenshots/settings.png) |
+
 ## Installation
 
 1. [**Download QuickAudioSwitcher.exe**](https://github.com/Gitromanus/QuickAudioSwitcher/releases/latest/download/QuickAudioSwitcher.exe) (latest release)
